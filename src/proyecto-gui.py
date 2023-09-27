@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog, messagebox, ttk
 
 import cv2
 import numpy as np
@@ -11,6 +11,9 @@ class ImageCompressionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Image Compression with SVD")
+        self.root.geometry(
+            "800x400"
+        )  # Establece un tamaño predeterminado para la ventana
 
         # Crear el marco principal
         self.frame = ttk.Frame(root)
@@ -23,26 +26,29 @@ class ImageCompressionApp:
         self.load_button.grid(row=0, column=0, pady=10)
 
         self.svd_button = ttk.Button(
-            self.frame, text="Comprimir", command=self.compress_image
+            self.frame, text="Comprimir", command=self.on_compress_image
         )
-        self.svd_button.grid(row=0, column=1, pady=10)
+        self.svd_button.grid(row=0, column=2, pady=10)
         self.svd_button.state(["disabled"])
 
-        self.decompress_button = ttk.Button(
-            self.frame, text="Descomprimir", command=self.decompress_image
+        self.restore_button = ttk.Button(
+            self.frame, text="Restaurar", command=self.restore_image
         )
-        self.decompress_button.grid(row=0, column=2, pady=10)
-        self.decompress_button.state(["disabled"])
+        self.restore_button.grid(row=0, column=3, pady=10)
+        self.restore_button.state(["disabled"])
 
         # Lienzos para mostrar imágenes
         self.canvas_original = tk.Canvas(self.frame, width=256, height=256)
         self.canvas_original.grid(row=1, column=0, padx=5)
 
+        self.canvas_original_components = tk.Canvas(self.frame, width=256, height=256)
+        self.canvas_original_components.grid(row=1, column=1, padx=5)
+
         self.canvas_compressed = tk.Canvas(self.frame, width=256, height=256)
-        self.canvas_compressed.grid(row=1, column=1, padx=5)
+        self.canvas_compressed.grid(row=1, column=2, padx=5)
 
         self.canvas_decompressed = tk.Canvas(self.frame, width=256, height=256)
-        self.canvas_decompressed.grid(row=1, column=2, padx=5)
+        self.canvas_decompressed.grid(row=1, column=3, padx=5)
 
         # Etiqueta y entrada para el número de componentes
         self.n_components_label = ttk.Label(self.frame, text="Número de Componentes:")
@@ -68,58 +74,115 @@ class ImageCompressionApp:
                 0, 0, anchor="nw", image=self.photo_original
             )
             self.svd_button.state(["!disabled"])
+            self.image_data = np.array(
+                self.image.convert("L")
+            )  # Convertir a escala de grises
+            n_components = min(self.image_data.shape)
+            compressed_image = self.compress_image(n_components)
+            self.photo_org = ImageTk.PhotoImage(compressed_image)
+            self.canvas_original_components.create_image(
+                0,
+                0,
+                anchor="nw",
+                image=self.photo_org,  # Mostrar la imagen comprimida aquí
+            )
 
-    def compress_image(self):
+    def on_compress_image(self):
+        n_components = int(self.n_components_entry.get())
+        if n_components <= 0:
+            raise ValueError("El número de componentes debe ser mayor que 0.")
+        compressed_image = self.compress_image(n_components)
+        self.photo_compressed = ImageTk.PhotoImage(compressed_image)
+        self.canvas_compressed.create_image(
+            0,
+            0,
+            anchor="nw",
+            image=self.photo_compressed,  # Mostrar la imagen comprimida aquí
+        )
+
+    def compress_image(self, n_components):
         if hasattr(self, "image"):
             try:
-                n_components = int(self.n_components_entry.get())
-                if n_components <= 0:
-                    raise ValueError("El número de componentes debe ser mayor que 0.")
-
-                image_data = np.array(
-                    self.image.convert("L")
-                )  # Convertir a escala de grises
-
                 # Realizar la descomposición SVD
-                svd = TruncatedSVD(n_components=n_components)
-                self.components = svd.fit_transform(image_data)
-
-                # Reconstruir la imagen comprimida
-                reconstructed_image = np.dot(self.components, svd.components_)
-                reconstructed_image = np.uint8(reconstructed_image)
-                reconstructed_image = Image.fromarray(reconstructed_image)
-
-                # Mostrar la imagen comprimida
-                self.photo_compressed = ImageTk.PhotoImage(reconstructed_image)
-                self.canvas_compressed.create_image(
-                    0, 0, anchor="nw", image=self.photo_compressed
-                )
+                self.svd = TruncatedSVD(n_components=n_components)
+                self.components = self.svd.fit_transform(self.image_data)
 
                 # Habilitar el botón de descompresión
-                self.decompress_button.state(["!disabled"])
+                self.restore_button.state(["!disabled"])
+                return self.get_compressed_components(self.components)
             except ValueError as e:
-                tk.messagebox.showerror("Error", str(e))
+                messagebox.showerror("Error", str(e))
 
-    def decompress_image(self):
-        if hasattr(self, "components"):
-            n_components = self.components.shape[1]
-            svd = TruncatedSVD(n_components=n_components)
+    def get_compressed_components(self, components):
+        num_components = components.shape[1]
 
-            # Utiliza el mismo número de componentes que se utilizó para la compresión
-            n_components_decompression = n_components
+        noise_size = (256, 256)
 
-            # Reduce la matriz de componentes a los componentes necesarios
-            reduced_components = self.components[:, :n_components_decompression]
+        noise_image = np.random.randint(0, 256, size=noise_size, dtype=np.uint8)
+        noise_image = Image.fromarray(noise_image, "L")
 
-            # Reconstruye la imagen comprimida
-            decompressed_image_data = np.dot(reduced_components, svd.components_)
-            decompressed_image_data = np.uint8(decompressed_image_data)
-            decompressed_image = Image.fromarray(decompressed_image_data)
+        component_images = []
 
-            self.photo_decompressed = ImageTk.PhotoImage(decompressed_image)
-            self.canvas_decompressed.create_image(
-                0, 0, anchor="nw", image=self.photo_decompressed
+        for i in range(num_components):
+            # Escalar los valores de los componentes para que estén en el rango 0-255
+            component_data = components[:, i]
+            component_min = component_data.min()
+            component_max = component_data.max()
+
+            if component_max != component_min:
+                scaled_component_data = (
+                    (component_data - component_min)
+                    / (component_max - component_min)
+                    * 255
+                ).astype(np.uint8)
+            else:
+                scaled_component_data = np.zeros_like(component_data, dtype=np.uint8)
+
+            component_image_data = scaled_component_data.reshape(
+                (
+                    int(np.sqrt(len(scaled_component_data))),
+                    int(np.sqrt(len(scaled_component_data))),
+                )
             )
+
+            component_image = Image.fromarray(component_image_data, "L")
+            component_image = component_image.resize(noise_size)
+
+            component_images.append(component_image)
+
+        for component_image in component_images:
+            noise_image = Image.blend(noise_image, component_image, alpha=0.5)
+
+        return noise_image
+
+    def restore_image(self):
+        if hasattr(self, "svd") and self.svd is not None:
+            try:
+                # Reconstruye la matriz original a partir de los componentes y los valores singulares
+                reconstructed_image_data = np.dot(self.components, self.svd.components_)
+
+                # Asegúrate de que los valores estén en el rango adecuado (0-255)
+                reconstructed_image_data = np.clip(reconstructed_image_data, 0, 255)
+
+                # Redimensiona la matriz a la forma original de la imagen
+                reconstructed_image_data = reconstructed_image_data.reshape(
+                    self.image.size[1], self.image.size[0]
+                )
+
+                # Convierte la matriz reconstruida en una imagen
+                reconstructed_image_data = np.uint8(reconstructed_image_data)
+                decompressed_image = Image.fromarray(reconstructed_image_data)
+
+                # Reescala la imagen reconstruida para que tenga el mismo tamaño que la original
+                decompressed_image = decompressed_image.resize(self.image.size)
+
+                self.photo_decompressed = ImageTk.PhotoImage(decompressed_image)
+                self.canvas_decompressed.create_image(
+                    0, 0, anchor="nw", image=self.photo_decompressed
+                )
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+                self.restore_button.state(["disabled"])
 
 
 if __name__ == "__main__":

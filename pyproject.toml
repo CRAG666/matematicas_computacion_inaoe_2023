@@ -6,10 +6,14 @@ authors = ["Crag <ogeidca49@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+# python = "^3.11"
+python = "<3.13,>=3.9"
 matplotlib = "^3.7.2"
 numba = "^0.57.1"
 pillow = "^10.0.0"
+scikit-learn = "^1.3.1"
+scipy = "^1.11.2"
+scikit-image = "^0.21.0"
 
 
 [build-system]

@@ -54,27 +54,27 @@ class ImageCompressionApp:
 
         # Columna 4: Gráficos
         self.column4 = ttk.Frame(self.frame)
-        self.column4.grid(row=1, column=3, padx=5, pady=5, sticky="nsew")
+        self.column4.grid(row=2, column=0, padx=1, pady=1, sticky="nsew")
 
         self.explained_variance_canvas = tk.Canvas(self.column4, width=400, height=300)
-        self.explained_variance_canvas.grid(row=0, column=0, padx=5, pady=5)
+        self.explained_variance_canvas.grid(row=0, column=0, padx=1, pady=1)
 
         self.reconstruction_error_canvas = tk.Canvas(
             self.column4, width=400, height=300
         )
-        self.reconstruction_error_canvas.grid(row=1, column=0, padx=5, pady=5)
+        self.reconstruction_error_canvas.grid(row=1, column=0, padx=1, pady=1)
 
         # Columna 5: histogramas
         self.column5 = ttk.Frame(self.frame)
-        self.column5.grid(row=1, column=4, padx=5, pady=5, sticky="nsew")
+        self.column5.grid(row=2, column=1, padx=1, pady=1, sticky="nsew")
 
         self.histogram_canvas = tk.Canvas(self.column5, width=400, height=300)
-        self.histogram_canvas.grid(row=0, column=0, padx=5, pady=5)
+        self.histogram_canvas.grid(row=0, column=0, padx=1, pady=1)
 
         self.histogram_reconstruction_canvas = tk.Canvas(
             self.column5, width=400, height=300
         )
-        self.histogram_reconstruction_canvas.grid(row=1, column=0, padx=5, pady=5)
+        self.histogram_reconstruction_canvas.grid(row=1, column=0, padx=1, pady=1)
 
     def create_buttons(self):
         self.button_frame = ttk.Frame(self.frame)

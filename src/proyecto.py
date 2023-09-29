@@ -3,12 +3,11 @@ import random
 
 import matplotlib.pyplot as plt
 import numpy as np
-from skimage.measure import shannon_entropy
-from skimage.metrics import structural_similarity as ssim
+from skimage import io
 from skimage.transform import resize  # Importar la función resize
 from sklearn.datasets import fetch_olivetti_faces
 from sklearn.decomposition import TruncatedSVD
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error
 
 
 class ImageCompressionApp:
@@ -53,39 +52,13 @@ class ImageCompressionApp:
                 self.data.images[i].ravel(),
                 self.reconstructed_images[i].ravel(),
             )
-            mae = mean_absolute_error(
-                self.data.images[i].ravel(),
-                self.reconstructed_images[i].ravel(),
-            )
-            r2 = r2_score(
-                self.data.images[i].ravel(),
-                self.reconstructed_images[i].ravel(),
-            )
             psnr = 20 * np.log10(255.0 / np.sqrt(mse))
-
-            # Redimensionar la imagen reconstruida al tamaño de la referencia
-            reconstructed_image_resized = resize(
-                self.reconstructed_images[i], reference_shape, anti_aliasing=True
-            )
-
-            image_ssim = ssim(
-                self.data.images[i],
-                reconstructed_image_resized,
-                data_range=self.data.images[i].max() - self.data.images[i].min(),
-            )
-            entropy_original = shannon_entropy(self.data.images[i])
-            entropy_reconstructed = shannon_entropy(reconstructed_image_resized)
 
             metrics.append(
                 {
                     "Imagen": i + 1,
                     "MSE": mse,
-                    "MAE": mae,
-                    "R^2": r2,
                     "PSNR": psnr,
-                    "SSIM": image_ssim,
-                    "Entropy_Original": entropy_original,
-                    "Entropy_Reconstructed": entropy_reconstructed,
                 }
             )
 
@@ -95,7 +68,8 @@ class ImageCompressionApp:
         if num_images_to_show <= 0:
             raise ValueError("El número de imágenes a mostrar debe ser mayor que 0.")
 
-        random_indices = random.sample(range(len(self.data.images)), num_images_to_show)
+        # random_indices = random.sample(range(len(self.data.images)), num_images_to_show)
+        random_indices = [129, 171, 255, 41]
 
         plt.figure(figsize=(15, 12))
 
@@ -105,7 +79,7 @@ class ImageCompressionApp:
             plt.title(f"Imagen {idx + 1}")
             plt.axis("off")
 
-            image_jpg = self.convert_images_to_jpg_format(self.data.images[idx])
+            image_jpg = self.convert_images_to_jpg_format(self.data.data[idx])
             plt.subplot(4, num_images_to_show, i + num_images_to_show + 1)
             plt.hist(
                 image_jpg.ravel(),
@@ -130,6 +104,7 @@ class ImageCompressionApp:
             image_reconstructed_jpg = self.convert_images_to_jpg_format(
                 self.reconstructed_images[idx]
             )
+
             plt.subplot(4, num_images_to_show, i + 3 * num_images_to_show + 1)
             plt.hist(
                 image_reconstructed_jpg.ravel(),
@@ -148,8 +123,8 @@ class ImageCompressionApp:
 
 
 if __name__ == "__main__":
-    app = OlivettiFacesApp()
-    num_components = 225
+    app = ImageCompressionApp()
+    num_components = 50
     app.compress_images(num_components)
 
     metrics_list = app.analyze_images()
@@ -158,12 +133,7 @@ if __name__ == "__main__":
         fieldnames = [
             "Imagen",
             "MSE",
-            "MAE",
-            "R^2",
             "PSNR",
-            "SSIM",
-            "Entropy_Original",
-            "Entropy_Reconstructed",
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 

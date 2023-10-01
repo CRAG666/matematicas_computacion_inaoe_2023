@@ -1,3 +1,4 @@
+import argparse
 import csv
 import random
 
@@ -64,16 +65,18 @@ class ImageCompressionApp:
 
         return metrics
 
-    def plot_images_with_metrics(self, num_images_to_show=4):
+    def plot_images_with_metrics(self, num_images_to_show=4, selected_indices=None):
         if num_images_to_show <= 0:
             raise ValueError("El número de imágenes a mostrar debe ser mayor que 0.")
 
-        # random_indices = random.sample(range(len(self.data.images)), num_images_to_show)
-        random_indices = [129, 171, 255, 41]
+        if selected_indices is None:
+            selected_indices = random.sample(
+                range(len(self.data.images)), num_images_to_show
+            )
 
         plt.figure(figsize=(15, 12))
 
-        for i, idx in enumerate(random_indices):
+        for i, idx in enumerate(selected_indices):
             plt.subplot(4, num_images_to_show, i + 1)
             plt.imshow(self.data.images[idx], cmap=plt.cm.gray)
             plt.title(f"Imagen {idx + 1}")
@@ -124,20 +127,26 @@ class ImageCompressionApp:
 
 if __name__ == "__main__":
     app = ImageCompressionApp()
-    num_components = 50
+    parser = argparse.ArgumentParser()
+    parser.add_argument("num_components", type=int, help="Número de componentes")
+    args = parser.parse_args()
+    num_components = args.num_components
     app.compress_images(num_components)
-
     metrics_list = app.analyze_images()
-
-    with open("metrics.csv", "w", newline="") as csvfile:
+    sorted_metrics = sorted(metrics_list, key=lambda x: (x["MSE"], -x["PSNR"]))
+    num_images_to_select = 4
+    worst_indices = [
+        item["Imagen"] - 1 for item in sorted_metrics[:num_images_to_select]
+    ]
+    app.plot_images_with_metrics(
+        num_images_to_show=num_images_to_select, selected_indices=worst_indices
+    )
+    with open(f"metrics-{num_components}.csv", "w", newline="") as csvfile:
         fieldnames = [
             "Imagen",
             "MSE",
             "PSNR",
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
         writer.writeheader()
-        writer.writerows(metrics_list)
-
-    app.plot_images_with_metrics(num_images_to_show=4)
+        writer.writerows(sorted_metrics)

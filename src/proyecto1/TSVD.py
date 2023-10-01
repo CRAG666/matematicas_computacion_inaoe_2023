@@ -65,7 +65,9 @@ class ImageCompressionApp:
 
         return metrics
 
-    def plot_images_with_metrics(self, num_images_to_show=4, selected_indices=None):
+    def plot_images_with_metrics(
+        self, num_images_to_show=4, selected_indices=None, worst_indices=None
+    ):
         if num_images_to_show <= 0:
             raise ValueError("El número de imágenes a mostrar debe ser mayor que 0.")
 
@@ -133,7 +135,9 @@ if __name__ == "__main__":
     num_components = args.num_components
     app.compress_images(num_components)
     metrics_list = app.analyze_images()
-    sorted_metrics = sorted(metrics_list, key=lambda x: (x["MSE"], -x["PSNR"]))
+    sorted_metrics = sorted(
+        metrics_list, key=lambda x: (x["MSE"], -x["PSNR"]), reverse=True
+    )
     num_images_to_select = 4
     worst_indices = [
         item["Imagen"] - 1 for item in sorted_metrics[:num_images_to_select]

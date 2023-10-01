@@ -13,17 +13,12 @@ imagenes = df["Imagen"]
 mse = df["MSE"]
 psnr = df["PSNR"]
 
-fig, axs = plt.subplots(2, 1, figsize=(15, 15))
+fig, ax = plt.subplots(figsize=(15, 7))
 
-axs[0].scatter(imagenes, mse, marker="o", linestyle="-")
-axs[0].set_title("Error Cuadrático Medio (MSE)")
-axs[0].set_xlabel("Imagen")
-axs[0].set_ylabel("Valor de MSE")
-
-axs[1].scatter(imagenes, psnr, marker="o", linestyle="-")
-axs[1].set_title("Relación Señal-Ruido de Pico (PSNR)")
-axs[1].set_xlabel("Imagen")
-axs[1].set_ylabel("Valor de PSNR")
+ax.scatter(mse, psnr, marker="o", linestyle="-")
+ax.set_title("Relación entre MSE y PSNR")
+ax.set_xlabel("Valor de MSE")
+ax.set_ylabel("Valor de PSNR")
 
 plt.tight_layout()
 

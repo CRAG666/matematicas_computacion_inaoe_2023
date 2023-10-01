@@ -15,10 +15,21 @@ psnr = df["PSNR"]
 
 fig, ax = plt.subplots(figsize=(15, 7))
 
-ax.scatter(mse, psnr, marker="o", linestyle="-")
+# Dibuja el gráfico de dispersión con MSE en el eje X y PSNR en el eje Y
+scatter = ax.scatter(mse, psnr, marker="o", linestyle="-")
 ax.set_title("Relación entre MSE y PSNR")
 ax.set_xlabel("Valor de MSE")
 ax.set_ylabel("Valor de PSNR")
+
+# Etiqueta cada punto con su número de imagen correspondiente
+for i, imagen in enumerate(imagenes):
+    ax.annotate(
+        imagen,
+        (mse[i], psnr[i]),
+        textcoords="offset points",
+        xytext=(0, 10),
+        ha="center",
+    )
 
 plt.tight_layout()
 

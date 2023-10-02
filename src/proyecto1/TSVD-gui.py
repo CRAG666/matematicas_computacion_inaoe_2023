@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageTk
 from sklearn.decomposition import TruncatedSVD
+from sklearn.metrics import mean_squared_error
 
 
 class ImageCompressionApp:
@@ -28,53 +29,70 @@ class ImageCompressionApp:
     def create_columns(self):
         self.create_buttons()
 
+        # Configuración uniforme de ancho de columna y margen
+        uniform_width = 400
+        uniform_height = 256  # Altura uniforme
+        uniform_margin = 5
+
         # Columna 1: Original
         self.column1 = ttk.Frame(self.frame)
-        self.column1.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+        self.column1.grid(row=1, column=0, sticky="nsew")
 
-        self.canvas_original = tk.Canvas(self.column1, width=256, height=256)
-        self.canvas_original.grid(row=0, column=0, padx=5)
+        self.canvas_original_container = ttk.Frame(self.column1)
+        self.canvas_original_container.grid(row=0, column=0)
 
-        self.canvas_original_components = tk.Canvas(self.column1, width=256, height=256)
-        self.canvas_original_components.grid(row=0, column=1, padx=5)
+        self.canvas_original = tk.Canvas(self.canvas_original_container, width=225, height=225)
+        self.canvas_original.grid(row=0, column=0, padx=94, pady=0)
 
-        # Columna 2: Comprimido
+        self.canvas_decompressed_container = ttk.Frame(self.column1)
+        self.canvas_decompressed_container.grid(row=0, column=1)
+
+        self.canvas_decompressed = tk.Canvas(self.canvas_decompressed_container, width=225, height=225)
+        self.canvas_decompressed.grid(row=0, column=0, padx=100, pady=0)
+
+        # Columna 2: components
         self.column2 = ttk.Frame(self.frame)
-        self.column2.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+        self.column2.grid(row=2, column=0, sticky="nsew")
 
-        self.canvas_compressed = tk.Canvas(self.column2, width=256, height=256)
-        self.canvas_compressed.grid(row=0, column=0, padx=5)
+        self.canvas_components_container = ttk.Frame(self.column2)
+        self.canvas_components_container.grid(row=0, column=0)
 
-        # Columna 3: Restaurado
+        self.canvas_original_components = tk.Canvas(self.canvas_components_container, width=256, height=256)
+        self.canvas_original_components.grid(row=0, column=0, padx=82, pady=0)
+
+        self.canvas_ccomponents_container = ttk.Frame(self.column2)
+        self.canvas_ccomponents_container.grid(row=0, column=1)
+
+        self.canvas_compressed = tk.Canvas(self.canvas_ccomponents_container, width=256, height=256)
+        self.canvas_compressed.grid(row=0, column=0, padx=77, pady=0)
+
+        # Columna 3: Histogramas
         self.column3 = ttk.Frame(self.frame)
-        self.column3.grid(row=1, column=2, padx=5, pady=5, sticky="nsew")
+        self.column3.grid(row=3, column=0, sticky="nsew")
 
-        self.canvas_decompressed = tk.Canvas(self.column3, width=256, height=256)
-        self.canvas_decompressed.grid(row=0, column=0, padx=5)
-
-        # Columna 4: Gráficos
-        self.column4 = ttk.Frame(self.frame)
-        self.column4.grid(row=2, column=0, padx=1, pady=1, sticky="nsew")
-
-        self.explained_variance_canvas = tk.Canvas(self.column4, width=400, height=300)
-        self.explained_variance_canvas.grid(row=0, column=0, padx=1, pady=1)
-
-        self.reconstruction_error_canvas = tk.Canvas(
-            self.column4, width=400, height=300
-        )
-        self.reconstruction_error_canvas.grid(row=1, column=0, padx=1, pady=1)
-
-        # Columna 5: histogramas
-        self.column5 = ttk.Frame(self.frame)
-        self.column5.grid(row=2, column=1, padx=1, pady=1, sticky="nsew")
-
-        self.histogram_canvas = tk.Canvas(self.column5, width=400, height=300)
-        self.histogram_canvas.grid(row=0, column=0, padx=1, pady=1)
+        self.histogram_canvas = tk.Canvas(self.column3, width=uniform_width, height=uniform_height)
+        self.histogram_canvas.grid(row=0, column=0, padx=uniform_margin, pady=0)
 
         self.histogram_reconstruction_canvas = tk.Canvas(
-            self.column5, width=400, height=300
+            self.column3, width=uniform_width, height=uniform_height
         )
-        self.histogram_reconstruction_canvas.grid(row=1, column=0, padx=1, pady=1)
+        self.histogram_reconstruction_canvas.grid(row=0, column=1, padx=uniform_margin, pady=0)
+
+        # Columna 4: MSA y PSNR
+        self.column4 = ttk.Frame(self.frame)
+        self.column4.grid(row=4, column=0, sticky="nsew")
+
+        mse_label = ttk.Label(self.column4, text="MSE:")
+        mse_label.grid(row=0, column=0, padx=10, pady=5, sticky="e")
+
+        self.mse_value_label = ttk.Label(self.column4, text="0.0")
+        self.mse_value_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+
+        psnr_label = ttk.Label(self.column4, text="PSNR:")
+        psnr_label.grid(row=0, column=2, padx=10, pady=5, sticky="e")
+
+        self.psnr_value_label = ttk.Label(self.column4, text="0.0")
+        self.psnr_value_label.grid(row=0, column=3, padx=10, pady=5, sticky="w")
 
     def create_buttons(self):
         self.button_frame = ttk.Frame(self.frame)
@@ -128,6 +146,7 @@ class ImageCompressionApp:
                 anchor="nw",
                 image=self.photo_org,
             )
+            self.plot_histogram(self.image_data)
 
     def on_compress_image(self):
         n_components = int(self.n_components_entry.get())
@@ -144,9 +163,6 @@ class ImageCompressionApp:
 
         explained_variance = self.svd.explained_variance_ratio_
         x_values = list(range(1, n_components + 1))
-
-        self.plot_explained_variance(x_values, explained_variance)
-        self.plot_reconstruction_error(x_values)
 
     def compress_image(self, n_components):
         if hasattr(self, "image"):
@@ -208,38 +224,18 @@ class ImageCompressionApp:
                     0, 0, anchor="nw", image=self.photo_decompressed
                 )
 
-                self.plot_histogram(self.image_data)
                 self.plot_histogram_reconstruction(reconstructed_image_data)
+
+                mse = mean_squared_error(
+                    self.image_data.ravel(),
+                    reconstructed_image_data.ravel(),
+                )
+                psnr = 20 * np.log10(255.0 / np.sqrt(mse))
+                self.mse_value_label.config(text=str(mse))
+                self.psnr_value_label.config(text=str(psnr))
             except Exception as e:
                 messagebox.showerror("Error", str(e))
                 self.restore_button.state(["disabled"])
-
-    def plot_explained_variance(self, x_values, explained_variance):
-        plt.figure(figsize=(6, 4))
-        plt.plot(x_values, explained_variance, marker="o", linestyle="-")
-        plt.title("Varianza Explicada por Componente Principal")
-        plt.xlabel("Número de Componentes Principales")
-        plt.ylabel("Varianza Explicada")
-        plt.grid()
-        plt.tight_layout()
-
-        self.explained_variance_canvas.delete("all")
-        self.plot_to_canvas(self.explained_variance_canvas, plt)
-
-    def plot_reconstruction_error(self, x_values):
-        reconstruction_error = self.calculate_reconstruction_error(
-            len(x_values), x_values
-        )
-        plt.figure(figsize=(6, 4))
-        plt.plot(x_values, reconstruction_error, marker="o", linestyle="-")
-        plt.title("Error de Reconstrucción")
-        plt.xlabel("Número de Componentes Principales")
-        plt.ylabel("Error")
-        plt.grid()
-        plt.tight_layout()
-
-        self.reconstruction_error_canvas.delete("all")
-        self.plot_to_canvas(self.reconstruction_error_canvas, plt)
 
     def plot_histogram(self, image_data):
         plt.figure(figsize=(6, 4))
